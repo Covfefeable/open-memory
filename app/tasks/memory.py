@@ -30,36 +30,51 @@ def process_memory_addition(self, task_db_id, user_input, user_id):
         
         # 2. Call LLM to extract info
         llm_service = LLMService()
-        extraction_result = llm_service.extract_memory_info(user_input)
+        extraction_results = llm_service.extract_memory_info(user_input)
         
-        memory_type_str = extraction_result.get('type', 'fact').upper()
-        memory_content = extraction_result.get('content', user_input)
-        
-        # Validate memory type
-        try:
-            memory_type = MemoryType[memory_type_str]
-        except KeyError:
-            memory_type = MemoryType.FACT
-            
-        # 3. Call Embedding service
+        if not extraction_results:
+            task_record.status = 'completed'
+            task_record.result = "No extractable memory found in input."
+            db.session.commit()
+            return {"status": "completed", "memory_ids": []}
+
+        memory_ids = []
         embedding_service = EmbeddingService()
-        vector = embedding_service.generate_embedding(memory_content)
-        
-        # 4. Save to Memory table
-        new_memory = Memory(
-            user_id=user_id,
-            type=memory_type,
-            content=memory_content,
-            embedding=vector
-        )
-        db.session.add(new_memory)
+
+        for item in extraction_results:
+            memory_type_str = item.get('type', 'fact').upper()
+            memory_content = item.get('content', '')
+            
+            if not memory_content:
+                continue
+
+            # Validate memory type
+            try:
+                memory_type = MemoryType[memory_type_str]
+            except KeyError:
+                memory_type = MemoryType.FACT
+                
+            # 3. Call Embedding service
+            vector = embedding_service.generate_embedding(memory_content)
+            
+            # 4. Save to Memory table
+            new_memory = Memory(
+                user_id=user_id,
+                type=memory_type,
+                content=memory_content,
+                embedding=vector
+            )
+            db.session.add(new_memory)
+            # Flush to get ID
+            db.session.flush() 
+            memory_ids.append(str(new_memory.id))
         
         # 5. Update task status to completed
         task_record.status = 'completed'
-        task_record.result = f"Memory added successfully. ID: {new_memory.id}"
+        task_record.result = f"Memories added successfully. IDs: {', '.join(memory_ids)}"
         db.session.commit()
         
-        return {"status": "completed", "memory_id": str(new_memory.id)}
+        return {"status": "completed", "memory_ids": memory_ids}
         
     except Exception as e:
         logger.error(f"Error processing memory addition: {str(e)}")

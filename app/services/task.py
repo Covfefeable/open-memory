@@ -4,7 +4,45 @@ from ..tasks.memory import process_memory_addition
 from ..extensions import db
 import uuid
 
+from ..models.memory import Memory
+from ..services.embedding import EmbeddingService
+from sqlalchemy import select
+
 class TaskService:
+    @staticmethod
+    def search_memories(user_id, query, top_k=5):
+        # 1. Generate embedding for query
+        embedding_service = EmbeddingService()
+        query_vector = embedding_service.generate_embedding(query)
+        
+        # 2. Search in DB using pgvector
+        # Cosine distance: <=>
+        # L2 distance: <->
+        # Inner product: <#>
+        # We usually use cosine distance for embeddings, so we order by cosine distance
+        
+        stmt = db.session.query(
+            Memory, 
+            Memory.embedding.cosine_distance(query_vector).label('distance')
+        ).filter(
+            Memory.user_id == user_id
+        ).order_by(
+            Memory.embedding.cosine_distance(query_vector)
+        ).limit(top_k)
+        
+        results = stmt.all()
+        
+        # 3. Format results
+        output = []
+        for memory, distance in results:
+            output.append({
+                'type': memory.type.value,
+                'content': memory.content,
+                'score': 1 - distance # Convert distance to similarity score
+            })
+            
+        return output
+
     @staticmethod
     def create_background_task(message):
         # 1. Start Celery task

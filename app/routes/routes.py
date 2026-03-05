@@ -19,3 +19,7 @@ def get_task(task_id):
 @api_bp.route('/memory/add', methods=['POST'])
 def add_memory():
     return task.add_memory(request)
+
+@api_bp.route('/memory/search', methods=['POST'])
+def search_memory():
+    return task.search_memory(request)
