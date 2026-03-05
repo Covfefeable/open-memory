@@ -1,14 +1,79 @@
 from ..models.task import Task
-from ..tasks.background import process_message
+# from ..tasks.background import process_message # Removed unused import that caused circular dependency or missing attribute
 from ..tasks.memory import process_memory_addition
 from ..extensions import db
 import uuid
 
-from ..models.memory import Memory
+from ..models.memory import Memory, MemoryType
 from ..services.embedding import EmbeddingService
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 class TaskService:
+    @staticmethod
+    def list_memories(user_id, memory_type_str=None):
+        # 1. Build query
+        query = db.session.query(Memory).filter(Memory.user_id == user_id)
+        
+        if memory_type_str:
+            try:
+                memory_type = MemoryType[memory_type_str.upper()]
+                query = query.filter(Memory.type == memory_type)
+            except KeyError:
+                # If invalid type, just return empty or ignore filter? 
+                # Let's return empty to be safe
+                return []
+        
+        # 2. Execute
+        memories = query.order_by(Memory.created_at.desc()).all()
+        
+        # 3. Format
+        output = []
+        for m in memories:
+            output.append({
+                'id': str(m.id),
+                'type': m.type.value,
+                'content': m.content,
+                'created_at': m.created_at.isoformat()
+            })
+        return output
+
+    @staticmethod
+    def update_memory(memory_id, content=None, memory_type_str=None):
+        memory = db.session.query(Memory).filter(Memory.id == memory_id).first()
+        if not memory:
+            raise ValueError(f"Memory with id {memory_id} not found")
+            
+        if content:
+            memory.content = content
+            # Re-generate embedding if content changed
+            embedding_service = EmbeddingService()
+            memory.embedding = embedding_service.generate_embedding(content)
+            
+        if memory_type_str:
+            try:
+                memory.type = MemoryType[memory_type_str.upper()]
+            except KeyError:
+                pass # Ignore invalid type or raise error?
+                
+        db.session.commit()
+        
+        return {
+            'id': str(memory.id),
+            'type': memory.type.value,
+            'content': memory.content,
+            'updated_at': memory.updated_at.isoformat() if memory.updated_at else None
+        }
+
+    @staticmethod
+    def delete_memory(memory_id):
+        memory = db.session.query(Memory).filter(Memory.id == memory_id).first()
+        if not memory:
+            raise ValueError(f"Memory with id {memory_id} not found")
+            
+        db.session.delete(memory)
+        db.session.commit()
+        return True
+
     @staticmethod
     def search_memories(user_id, query, top_k=5):
         # 1. Generate embedding for query
@@ -46,6 +111,8 @@ class TaskService:
     @staticmethod
     def create_background_task(message):
         # 1. Start Celery task
+        # Re-import here to avoid circular dependency if needed, or ensure process_message exists
+        from ..tasks.background import process_message
         celery_task = process_message.delay(message)
         
         # 2. Record in DB

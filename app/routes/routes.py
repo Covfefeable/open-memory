@@ -7,12 +7,6 @@ from ..utils.response import success_response
 def health_check():
     return success_response(data={'status': 'ok'})
 
-@api_bp.route('/tasks', methods=['POST'])
-def create_task():
-    # This might need update if create_task logic moved or changed
-    # Assuming basic echo for now or update later
-    pass
-
 @api_bp.route('/tasks/<task_id>', methods=['GET'])
 def get_task(task_id):
     return task.get_task(task_id)
@@ -24,3 +18,15 @@ def add_memory():
 @api_bp.route('/memory/search', methods=['POST'])
 def search_memory():
     return task.search_memory(request)
+
+@api_bp.route('/memory/list', methods=['POST'])
+def list_memory():
+    return task.list_memory(request)
+
+@api_bp.route('/memory/update', methods=['POST'])
+def update_memory():
+    return task.update_memory(request)
+
+@api_bp.route('/memory/delete', methods=['POST'])
+def delete_memory():
+    return task.delete_memory(request)
