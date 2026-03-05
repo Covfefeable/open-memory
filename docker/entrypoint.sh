@@ -4,7 +4,10 @@ set -e
 
 echo "Waiting for postgres..."
 
-# Wait for postgres logic (can be improved with wait-for-it.sh)
-# For now, we rely on docker-compose depends_on healthcheck or just sleep
+# Run database migrations if FLASK_APP is set (indicates we are running the API or Worker with Flask context)
+if [ "$FLASK_APP" = "app" ] && [ "$FLASK_ENV" != "development" ]; then
+    echo "Running database migrations..."
+    uv run flask db upgrade
+fi
 
 exec "$@"
