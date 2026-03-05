@@ -1,5 +1,5 @@
 from ..models.task import Task
-from ..tasks.background_tasks import process_message
+from ..tasks.background import process_message
 from ..tasks.memory import process_memory_addition
 from ..extensions import db
 import uuid

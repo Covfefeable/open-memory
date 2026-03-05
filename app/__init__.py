@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask
 from .config import config
 from .extensions import db, migrate, celery_init_app
@@ -19,9 +22,13 @@ def create_app(config_name='default'):
     db.init_app(app)
     migrate.init_app(app, db)
     celery_init_app(app)
+    
+    # Import tasks to ensure they are registered
+    from .tasks import background, memory as memory_tasks
 
     # Import models for migration
-    from .models import task, memory
+    with app.app_context():
+        from .models import task, memory
 
     # Register Blueprints
     from .routes import api_bp
@@ -32,3 +39,5 @@ def create_app(config_name='default'):
 def make_celery(app_name=__name__):
     app = create_app()
     return app.extensions["celery"]
+
+celery = make_celery()

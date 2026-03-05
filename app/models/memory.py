@@ -1,4 +1,5 @@
 from ..extensions import db
+from ..config import Config
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy import func
 from pgvector.sqlalchemy import Vector
@@ -17,8 +18,8 @@ class Memory(db.Model):
     type = db.Column(db.Enum(MemoryType), nullable=False)
     content = db.Column(db.Text, nullable=False)
     
-    # Vector embedding (1536 is standard for OpenAI ada-002, adjust if using other models)
-    embedding = db.Column(Vector(1536))
+    # Vector embedding (configured in environment variables)
+    embedding = db.Column(Vector(Config.EMBEDDING_DIMENSION))
     
     # Timestamps
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())

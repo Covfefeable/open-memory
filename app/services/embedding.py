@@ -18,7 +18,8 @@ class EmbeddingService:
             response = self.client.embeddings.create(
                 model=self.model,
                 input=text,
-                encoding_format="float"
+                encoding_format="float",
+                dimensions=int(os.environ.get("EMBEDDING_DIMENSION", 1536))
             )
             
             return response.data[0].embedding
