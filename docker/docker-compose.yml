@@ -20,6 +20,7 @@ services:
       - EMBEDDING_MODEL_API_KEY=${EMBEDDING_MODEL_API_KEY}
       - EMBEDDING_MODEL_BASE_URL=${EMBEDDING_MODEL_BASE_URL}
       - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION}
+      - API_AUTH_TOKEN=${API_AUTH_TOKEN}
     depends_on:
       postgres:
         condition: service_healthy

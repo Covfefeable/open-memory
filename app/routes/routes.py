@@ -1,10 +1,11 @@
 from flask import jsonify, request
 from . import api_bp
 from ..controllers import task
+from ..utils.response import success_response
 
 @api_bp.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({'status': 'ok'})
+    return success_response(data={'status': 'ok'})
 
 @api_bp.route('/tasks', methods=['POST'])
 def create_task():
