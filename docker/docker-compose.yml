@@ -26,8 +26,31 @@ services:
       - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME}
       - EMBEDDING_MODEL_API_KEY=${EMBEDDING_MODEL_API_KEY}
       - EMBEDDING_MODEL_BASE_URL=${EMBEDDING_MODEL_BASE_URL}
-      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION}
       - API_AUTH_TOKEN=${API_AUTH_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker-beat:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: open-memory-worker-beat
+    command: uv run celery -A app.celery beat --loglevel=info
+    environment:
+      - FLASK_APP=app
+      - DATABASE_URL=postgresql+psycopg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - LLM_MODEL_NAME=${LLM_MODEL_NAME}
+      - LLM_MODEL_API_KEY=${LLM_MODEL_API_KEY}
+      - LLM_MODEL_BASE_URL=${LLM_MODEL_BASE_URL}
+      - EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME}
+      - EMBEDDING_MODEL_API_KEY=${EMBEDDING_MODEL_API_KEY}
+      - EMBEDDING_MODEL_BASE_URL=${EMBEDDING_MODEL_BASE_URL}
+      - EMBEDDING_DIMENSION=${EMBEDDING_DIMENSION}
     depends_on:
       postgres:
         condition: service_healthy
