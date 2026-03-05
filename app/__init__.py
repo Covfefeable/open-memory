@@ -20,6 +20,9 @@ def create_app(config_name='default'):
     migrate.init_app(app, db)
     celery_init_app(app)
 
+    # Import models for migration
+    from .models import task, memory
+
     # Register Blueprints
     from .routes import api_bp
     app.register_blueprint(api_bp)
