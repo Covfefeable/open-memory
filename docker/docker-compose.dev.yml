@@ -31,5 +31,3 @@ services:
 networks:
   open-memory-dev-network:
     driver: bridge
-    networks:
-      - open-memory-dev-network

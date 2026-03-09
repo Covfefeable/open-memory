@@ -1,5 +1,4 @@
 from ..models.task import Task
-# from ..tasks.background import process_message # Removed unused import that caused circular dependency or missing attribute
 from ..tasks.memory import process_memory_addition
 from ..extensions import db
 import uuid
@@ -33,12 +32,42 @@ class TaskService:
                 'id': str(m.id),
                 'type': m.type.value,
                 'content': m.content,
+                'locked': m.locked,
                 'created_at': m.created_at.isoformat()
             })
         return output
 
     @staticmethod
-    def update_memory(memory_id, content=None, memory_type_str=None):
+    def manual_add_memory(user_id, content, memory_type_str='fact'):
+        try:
+            memory_type = MemoryType[memory_type_str.upper()]
+        except KeyError:
+            raise ValueError(f"Invalid memory type: {memory_type_str}")
+            
+        embedding_service = EmbeddingService()
+        vector = embedding_service.generate_embedding(content)
+        
+        memory = Memory(
+            user_id=user_id,
+            type=memory_type,
+            content=content,
+            embedding=vector
+        )
+        
+        db.session.add(memory)
+        db.session.commit()
+        
+        return {
+            'id': str(memory.id),
+            'user_id': memory.user_id,
+            'type': memory.type.value,
+            'content': memory.content,
+            'locked': memory.locked,
+            'created_at': memory.created_at.isoformat() if memory.created_at else None
+        }
+
+    @staticmethod
+    def update_memory(memory_id, content=None, memory_type_str=None, locked=None):
         memory = db.session.query(Memory).filter(Memory.id == memory_id).first()
         if not memory:
             raise ValueError(f"Memory with id {memory_id} not found")
@@ -54,6 +83,9 @@ class TaskService:
                 memory.type = MemoryType[memory_type_str.upper()]
             except KeyError:
                 pass # Ignore invalid type or raise error?
+        
+        if locked is not None:
+            memory.locked = bool(locked)
                 
         db.session.commit()
         
@@ -61,6 +93,7 @@ class TaskService:
             'id': str(memory.id),
             'type': memory.type.value,
             'content': memory.content,
+            'locked': memory.locked,
             'updated_at': memory.updated_at.isoformat() if memory.updated_at else None
         }
 

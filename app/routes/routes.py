@@ -23,6 +23,10 @@ def search_memory():
 def list_memory():
     return task.list_memory(request)
 
+@api_bp.route('/memory/manual_add', methods=['POST'])
+def manual_add_memory():
+    return task.manual_add_memory(request)
+
 @api_bp.route('/memory/update', methods=['POST'])
 def update_memory():
     return task.update_memory(request)

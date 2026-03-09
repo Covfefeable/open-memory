@@ -17,6 +17,7 @@ class Memory(db.Model):
     user_id = db.Column(db.String(256), nullable=False, index=True)
     type = db.Column(db.Enum(MemoryType), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    locked = db.Column(db.Boolean, default=False, nullable=False)
     
     # Vector embedding (configured in environment variables)
     embedding = db.Column(Vector(Config.EMBEDDING_DIMENSION))

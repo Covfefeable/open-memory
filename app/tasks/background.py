@@ -51,10 +51,12 @@ def compress_user_memories():
     try:
         logger.info("Starting scheduled compression check...")
         
-        # 1. Find users with > 50 memories
-        # Group by user_id and count
+        # 1. Find users with > 50 UNLOCKED memories
+        # Group by user_id and count, filtering out locked memories
         users_with_many_memories = db.session.query(
             Memory.user_id
+        ).filter(
+            Memory.locked == False
         ).group_by(
             Memory.user_id
         ).having(
@@ -96,15 +98,16 @@ def process_user_memory_compression(user_id):
         try:
             logger.info(f"[Compression] Starting for user {user_id}")
             
-            # 1. Fetch all memories
+            # 1. Fetch all UNLOCKED memories
             memories = db.session.query(Memory).filter(
-                Memory.user_id == user_id
+                Memory.user_id == user_id,
+                Memory.locked == False
             ).order_by(Memory.created_at).all()
             
-            logger.info(f"[Compression] Fetched {len(memories)} memories for user {user_id}")
+            logger.info(f"[Compression] Fetched {len(memories)} unlocked memories for user {user_id}")
             
             if len(memories) <= 50:
-                logger.info(f"[Compression] Skipped for user {user_id}: Memory count {len(memories)} <= 50")
+                logger.info(f"[Compression] Skipped for user {user_id}: Unlocked memory count {len(memories)} <= 50")
                 return "Skipped: Memory count dropped below threshold"
                 
             # Prepare content for LLM

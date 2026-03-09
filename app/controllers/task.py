@@ -52,6 +52,25 @@ def list_memory(request):
     results = TaskService.list_memories(user_id, memory_type)
     return success_response(data=results)
 
+def manual_add_memory(request):
+    from ..services.task import TaskService
+    
+    data = request.get_json()
+    if not data or 'user_id' not in data or 'content' not in data:
+        return error_response(message='Missing user_id or content', code=400)
+    
+    user_id = data['user_id']
+    content = data['content']
+    memory_type = data.get('type', 'fact') # Default to fact
+    
+    try:
+        new_memory = TaskService.manual_add_memory(user_id, content, memory_type)
+        return success_response(data=new_memory, code=201)
+    except ValueError as e:
+        return error_response(message=str(e), code=400)
+    except Exception as e:
+        return error_response(message=str(e), code=500)
+
 def update_memory(request):
     from ..services.task import TaskService
     
@@ -62,12 +81,13 @@ def update_memory(request):
     memory_id = data['id']
     content = data.get('content')
     memory_type = data.get('type')
+    locked = data.get('locked')
     
-    if not content and not memory_type:
+    if content is None and memory_type is None and locked is None:
         return error_response(message='Nothing to update', code=400)
         
     try:
-        updated_memory = TaskService.update_memory(memory_id, content, memory_type)
+        updated_memory = TaskService.update_memory(memory_id, content, memory_type, locked)
         return success_response(data=updated_memory)
     except ValueError as e:
         return error_response(message=str(e), code=404)
