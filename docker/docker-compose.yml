@@ -15,6 +15,7 @@ services:
     ports:
       - "${API_PORT}:${API_PORT}"
     environment:
+      - RUN_MIGRATIONS=true
       - FLASK_APP=app
       - FLASK_ENV=production
       - DATABASE_URL=postgresql+psycopg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}

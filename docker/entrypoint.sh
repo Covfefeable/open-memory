@@ -4,8 +4,8 @@ set -e
 
 echo "Waiting for postgres..."
 
-# Run database migrations if FLASK_APP is set (indicates we are running the API or Worker with Flask context)
-if [ "$FLASK_APP" = "app" ] && [ "$FLASK_ENV" != "development" ]; then
+# Run database migrations if RUN_MIGRATIONS is set to true
+if [ "$RUN_MIGRATIONS" = "true" ]; then
     echo "Running database migrations..."
     uv run flask db upgrade
 fi
