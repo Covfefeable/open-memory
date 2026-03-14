@@ -29,18 +29,32 @@ def process_memory_addition(self, task_db_id, user_input, user_id, llm_output):
         db.session.commit()
         
         # 2. Call LLM to extract info
-        # Fetch existing memories for deduplication
+        # Fetch existing memories for deduplication (excluding historical_context)
         existing_memories = db.session.query(Memory).filter(
             Memory.user_id == user_id,
-            Memory.locked == False
+            Memory.type != MemoryType.HISTORICAL_CONTEXT
         ).all()
         # Format as list of dicts: [{'type': 'position', 'content': '...'}]
         existing_memory_data = [{'type': m.type.value, 'content': m.content} for m in existing_memories]
 
         llm_service = LLMService()
+        
+        # 1. Extract standard memories (position, work_content, writing_preference)
         extraction_results = llm_service.extract_memory_info(user_input, llm_output, existing_memory_data)
         
-        if not extraction_results:
+        # 2. Extract historical context (always one, always locked)
+        historical_context = llm_service.extract_historical_context(user_input, llm_output)
+        
+        # Merge results
+        final_results = []
+        if extraction_results:
+            final_results.extend(extraction_results)
+        
+        if historical_context:
+            historical_context['locked'] = True # Force lock for historical context
+            final_results.append(historical_context)
+        
+        if not final_results:
             task_record.status = 'completed'
             task_record.result = "No extractable memory found in input."
             db.session.commit()
@@ -49,9 +63,10 @@ def process_memory_addition(self, task_db_id, user_input, user_id, llm_output):
         memory_ids = []
         embedding_service = EmbeddingService()
 
-        for item in extraction_results:
+        for item in final_results:
             memory_type_str = item.get('type', 'fact').upper()
             memory_content = item.get('content', '')
+            is_locked = item.get('locked', False)
             
             if not memory_content:
                 continue
@@ -70,7 +85,8 @@ def process_memory_addition(self, task_db_id, user_input, user_id, llm_output):
                 user_id=user_id,
                 type=memory_type,
                 content=memory_content,
-                embedding=vector
+                embedding=vector,
+                locked=is_locked
             )
             db.session.add(new_memory)
             # Flush to get ID
