@@ -19,10 +19,10 @@ def add_memory(request):
     from ..services.task import TaskService
     
     data = request.get_json()
-    if not data or 'user_input' not in data or 'user_id' not in data:
-        return error_response(message='Missing user_input or user_id', code=400)
+    if not data or 'user_input' not in data or 'user_id' not in data or 'llm_output' not in data:
+        return error_response(message='Missing user_input, user_id or llm_output', code=400)
         
-    task_id = TaskService.create_memory_task(data['user_input'], data['user_id'])
+    task_id = TaskService.create_memory_task(data['user_input'], data['user_id'], data['llm_output'])
     return success_response(data={'task_id': task_id, 'status': 'running'}, code=202)
 
 def search_memory(request):

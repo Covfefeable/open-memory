@@ -9,11 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
-def process_memory_addition(self, task_db_id, user_input, user_id):
+def process_memory_addition(self, task_db_id, user_input, user_id, llm_output):
     """
     Async task to process memory addition:
     1. Update task status to running
-    2. Call LLM to extract info
+    2. Call LLM to extract info (considering user input and llm output)
     3. Call Embedding service
     4. Save to Memory table
     5. Update task status to completed
@@ -29,8 +29,16 @@ def process_memory_addition(self, task_db_id, user_input, user_id):
         db.session.commit()
         
         # 2. Call LLM to extract info
+        # Fetch existing memories for deduplication
+        existing_memories = db.session.query(Memory).filter(
+            Memory.user_id == user_id,
+            Memory.locked == False
+        ).all()
+        # Format as list of dicts: [{'type': 'position', 'content': '...'}]
+        existing_memory_data = [{'type': m.type.value, 'content': m.content} for m in existing_memories]
+
         llm_service = LLMService()
-        extraction_results = llm_service.extract_memory_info(user_input)
+        extraction_results = llm_service.extract_memory_info(user_input, llm_output, existing_memory_data)
         
         if not extraction_results:
             task_record.status = 'completed'

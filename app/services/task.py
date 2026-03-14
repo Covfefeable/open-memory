@@ -33,7 +33,8 @@ class TaskService:
                 'type': m.type.value,
                 'content': m.content,
                 'locked': m.locked,
-                'created_at': m.created_at.isoformat()
+                'created_at': m.created_at.isoformat(),
+                'last_accessed_at': m.last_accessed_at.isoformat() if m.last_accessed_at else None
             })
         return output
 
@@ -130,13 +131,24 @@ class TaskService:
         
         results = stmt.all()
         
-        # 3. Format results
+        # 3. Update last_accessed_at for retrieved memories
+        from sqlalchemy import func
+        if results:
+            memory_ids = [m.id for m, _ in results]
+            db.session.query(Memory).filter(Memory.id.in_(memory_ids)).update(
+                {Memory.last_accessed_at: func.now()},
+                synchronize_session=False
+            )
+            db.session.commit()
+        
+        # 4. Format results
         output = []
         for memory, distance in results:
             output.append({
                 'type': memory.type.value,
                 'content': memory.content,
-                'score': 1 - distance # Convert distance to similarity score
+                'score': 1 - distance, # Convert distance to similarity score
+                'created_at': memory.created_at.isoformat() if memory.created_at else None
             })
             
         return output
@@ -160,7 +172,7 @@ class TaskService:
         return celery_task.id
 
     @staticmethod
-    def create_memory_task(user_input, user_id):
+    def create_memory_task(user_input, user_id, llm_output):
         # 1. Generate task ID beforehand to save to DB first
         # Note: We need the DB ID to pass to the task, or we pass the celery task ID.
         # Let's create the DB record first with a temporary task_id or generate UUID
@@ -178,7 +190,7 @@ class TaskService:
         # 2. Start Celery task
         # Pass the DB primary key ID so the task can update the record
         celery_task = process_memory_addition.apply_async(
-            args=[new_task.id, user_input, user_id],
+            args=[new_task.id, user_input, user_id, llm_output],
             task_id=task_uuid # Use same ID for celery
         )
         
