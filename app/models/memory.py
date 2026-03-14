@@ -7,8 +7,10 @@ import uuid
 import enum
 
 class MemoryType(enum.Enum):
-    PREFERENCE = "preference"
-    FACT = "fact"
+    POSITION = "position"
+    WORK_CONTENT = "work_content"
+    WRITING_PREFERENCE = "writing_preference"
+    HISTORICAL_CONTEXT = "historical_context"
 
 class Memory(db.Model):
     __tablename__ = 'memories'

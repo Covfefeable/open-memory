@@ -1,8 +1,8 @@
-"""initial migration
+"""Initial migration with official document memory types
 
-Revision ID: 71e2da1cd7da
+Revision ID: 119cd6574994
 Revises: 
-Create Date: 2026-03-05 14:47:48.957971
+Create Date: 2026-03-14 15:35:20.237164
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import pgvector
 
 
 # revision identifiers, used by Alembic.
-revision = '71e2da1cd7da'
+revision = '119cd6574994'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -23,8 +23,9 @@ def upgrade():
     op.create_table('memories',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.String(length=256), nullable=False),
-    sa.Column('type', sa.Enum('PREFERENCE', 'FACT', name='memorytype'), nullable=False),
+    sa.Column('type', sa.Enum('POSITION', 'WORK_CONTENT', 'WRITING_PREFERENCE', 'HISTORICAL_CONTEXT', name='memorytype'), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('locked', sa.Boolean(), nullable=False),
     sa.Column('embedding', pgvector.sqlalchemy.vector.VECTOR(dim=1536), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),

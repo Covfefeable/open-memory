@@ -52,7 +52,7 @@ def process_memory_addition(self, task_db_id, user_input, user_id):
             try:
                 memory_type = MemoryType[memory_type_str]
             except KeyError:
-                memory_type = MemoryType.FACT
+                memory_type = MemoryType.HISTORICAL_CONTEXT
                 
             # 3. Call Embedding service
             vector = embedding_service.generate_embedding(memory_content)

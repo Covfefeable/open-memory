@@ -139,12 +139,12 @@ def process_user_memory_compression(user_id):
             
             for item in new_memories_data:
                 memory_content = item.get('content')
-                memory_type_str = item.get('type', 'fact').upper()
+                memory_type_str = item.get('type', 'historical_context').upper()
                 
                 try:
                     memory_type = MemoryType[memory_type_str]
                 except KeyError:
-                    memory_type = MemoryType.FACT
+                    memory_type = MemoryType.HISTORICAL_CONTEXT
                     
                 vector = embedding_service.generate_embedding(memory_content)
                 
