@@ -12,7 +12,7 @@ def get_task(task_id):
     
     result = TaskService.get_task_status(task_id)
     if result.get('status') == 'not_found':
-        return error_response(message="Task not found", code=404)
+        return error_response(message="任务不存在", code=404)
     return success_response(data=result)
 
 def add_memory(request):
@@ -20,7 +20,7 @@ def add_memory(request):
     
     data = request.get_json()
     if not data or 'user_input' not in data or 'user_id' not in data or 'llm_output' not in data:
-        return error_response(message='Missing user_input, user_id or llm_output', code=400)
+        return error_response(message='缺少必要参数：user_input, user_id 或 llm_output', code=400)
         
     task_id = TaskService.create_memory_task(data['user_input'], data['user_id'], data['llm_output'])
     return success_response(data={'task_id': task_id, 'status': 'running'}, code=202)
@@ -30,7 +30,7 @@ def search_memory(request):
     
     data = request.get_json()
     if not data or 'user_id' not in data or 'query' not in data:
-        return error_response(message='Missing user_id or query', code=400)
+        return error_response(message='缺少必要参数：user_id 或 query', code=400)
         
     user_id = data['user_id']
     query = data['query']
@@ -44,7 +44,7 @@ def list_memory(request):
     
     data = request.get_json()
     if not data or 'user_id' not in data:
-        return error_response(message='Missing user_id', code=400)
+        return error_response(message='缺少必要参数：user_id', code=400)
         
     user_id = data['user_id']
     memory_type = data.get('type') # Optional
@@ -57,7 +57,7 @@ def manual_add_memory(request):
     
     data = request.get_json()
     if not data or 'user_id' not in data or 'content' not in data:
-        return error_response(message='Missing user_id or content', code=400)
+        return error_response(message='缺少必要参数：user_id 或 content', code=400)
     
     user_id = data['user_id']
     content = data['content']
@@ -76,7 +76,7 @@ def update_memory(request):
     
     data = request.get_json()
     if not data or 'id' not in data:
-        return error_response(message='Missing memory id', code=400)
+        return error_response(message='缺少记忆 ID', code=400)
     
     memory_id = data['id']
     content = data.get('content')
@@ -84,7 +84,7 @@ def update_memory(request):
     locked = data.get('locked')
     
     if content is None and memory_type is None and locked is None:
-        return error_response(message='Nothing to update', code=400)
+        return error_response(message='没有需要更新的内容', code=400)
         
     try:
         updated_memory = TaskService.update_memory(memory_id, content, memory_type, locked)
@@ -99,12 +99,12 @@ def delete_memory(request):
     
     data = request.get_json()
     if not data or 'id' not in data:
-        return error_response(message='Missing memory id', code=400)
+        return error_response(message='缺少记忆 ID', code=400)
     
     memory_id = data['id']
     try:
         TaskService.delete_memory(memory_id)
-        return success_response(message='Memory deleted successfully')
+        return success_response(message='记忆删除成功')
     except ValueError as e:
         return error_response(message=str(e), code=404)
     except Exception as e:

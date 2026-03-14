@@ -12,13 +12,13 @@ class LLMService:
 
     def extract_memory_info(self, user_input, llm_output, existing_memories=None):
         """
-        Extracts memory type and content from user input and llm output using LLM.
-        Returns a list of dictionaries with 'type' and 'content'.
+        利用大模型从用户输入和LLM回答中提取记忆类型和内容。
+        返回一个包含 'type' 和 'content' 的字典列表。
         
-        Args:
-            user_input (str): The user's input message.
-            llm_output (str): The LLM's response message.
-            existing_memories (list, optional): List of existing memory dicts ({'type': '...', 'content': '...'}) to avoid duplicates.
+        参数:
+            user_input (str): 用户的输入消息。
+            llm_output (str): LLM 的回复消息。
+            existing_memories (list, optional): 已存在的记忆字典列表 ({'type': '...', 'content': '...'})，用于去重。
         """
         existing_memories_text = ""
         if existing_memories:
@@ -77,12 +77,12 @@ class LLMService:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
                 ],
-                # Removing json_object constraint as it sometimes forces a dict wrapper
-                # We want a raw list
+                # 移除可能存在的 json_object 约束，因为它有时会强制生成字典包裹
+                # 我们需要原始列表
             )
             
             content = response.choices[0].message.content.strip()
-            # Remove markdown code blocks if present
+            # 如果内容被包含在 ```json 代码块中，进行处理
             if content.startswith("```json"):
                 content = content[7:]
             if content.startswith("```"):
@@ -92,9 +92,9 @@ class LLMService:
             
             parsed = json.loads(content)
             
-            # Handle cases where LLM might wrap the array in a key like "memories" or "result"
+            # 处理 LLM 可能将数组包裹在 "memories" 或 "result" 等键中的情况
             if isinstance(parsed, dict):
-                # Try to find a list value in the dict
+                # 尝试在字典中找到列表类型的值
                 for key, value in parsed.items():
                     if isinstance(value, list):
                         return value
@@ -105,12 +105,12 @@ class LLMService:
                 
             return []
         except Exception as e:
-            raise Exception(f"LLM extraction failed: {str(e)}")
+            raise Exception(f"LLM 提取失败: {str(e)}")
 
     def extract_historical_context(self, user_input, llm_output):
         """
-        Extracts historical context from user input and llm output.
-        Returns a dictionary with 'type' and 'content' or None.
+        从用户输入和 LLM 输出中提取历史上下文。
+        返回包含 'type' 和 'content' 的字典，或者 None。
         """
         system_prompt = """
         你是一个帮助提取公文写作场景下用户记忆的AI助手。
@@ -153,7 +153,7 @@ class LLMService:
             )
             
             content = response.choices[0].message.content.strip()
-            # Remove markdown code blocks if present
+            # 如果内容被包含在 ```json 代码块中，进行处理
             if content.startswith("```json"):
                 content = content[7:]
             if content.startswith("```"):
@@ -166,19 +166,19 @@ class LLMService:
                 
             parsed = json.loads(content)
             if isinstance(parsed, dict) and 'content' in parsed:
-                parsed['type'] = 'historical_context' # Ensure type is correct
+                parsed['type'] = 'historical_context' # 确保类型正确
                 return parsed
             
             return None
         except Exception as e:
-            # Log error but don't crash, just return None
-            print(f"Historical context extraction failed: {str(e)}")
+            # 记录错误但不崩溃，仅返回 None
+            print(f"历史上下文提取失败: {str(e)}")
             return None
 
     def compress_memories(self, combined_text):
         """
-        Compresses, deduplicates and summarizes a list of memories.
-        Returns a list of dictionaries with 'type' and 'content'.
+        压缩、去重并总结记忆列表。
+        返回包含 'type' 和 'content' 的字典列表。
         """
         system_prompt = """
         你是一个专业的公文写作记忆整理专家。你的任务是整理用户的长期记忆库。
@@ -214,7 +214,7 @@ class LLMService:
             
             content = response.choices[0].message.content.strip()
             
-            # Remove markdown code blocks if present
+            # 如果内容被包含在 ```json 代码块中，进行处理
             if content.startswith("```json"):
                 content = content[7:]
             if content.startswith("```"):
@@ -235,4 +235,4 @@ class LLMService:
                 
             return []
         except Exception as e:
-            raise Exception(f"LLM compression failed: {str(e)}")
+            raise Exception(f"LLM 压缩失败: {str(e)}")

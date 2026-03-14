@@ -10,7 +10,7 @@ from sqlalchemy import select, and_
 class TaskService:
     @staticmethod
     def list_memories(user_id, memory_type_str=None):
-        # 1. Build query
+        # 1. 构建查询
         query = db.session.query(Memory).filter(Memory.user_id == user_id)
         
         if memory_type_str:
@@ -18,14 +18,13 @@ class TaskService:
                 memory_type = MemoryType[memory_type_str.upper()]
                 query = query.filter(Memory.type == memory_type)
             except KeyError:
-                # If invalid type, just return empty or ignore filter? 
-                # Let's return empty to be safe
+                # 如果类型无效，返回空列表
                 return []
         
-        # 2. Execute
+        # 2. 执行查询
         memories = query.order_by(Memory.created_at.desc()).all()
         
-        # 3. Format
+        # 3. 格式化输出
         output = []
         for m in memories:
             output.append({
@@ -43,7 +42,7 @@ class TaskService:
         try:
             memory_type = MemoryType[memory_type_str.upper()]
         except KeyError:
-            raise ValueError(f"Invalid memory type: {memory_type_str}")
+            raise ValueError(f"无效的记忆类型: {memory_type_str}")
             
         embedding_service = EmbeddingService()
         vector = embedding_service.generate_embedding(content)
@@ -102,7 +101,7 @@ class TaskService:
     def delete_memory(memory_id):
         memory = db.session.query(Memory).filter(Memory.id == memory_id).first()
         if not memory:
-            raise ValueError(f"Memory with id {memory_id} not found")
+            raise ValueError(f"未找到 ID 为 {memory_id} 的记忆")
             
         db.session.delete(memory)
         db.session.commit()
@@ -110,15 +109,15 @@ class TaskService:
 
     @staticmethod
     def search_memories(user_id, query, top_k=5):
-        # 1. Generate embedding for query
+        # 1. 生成查询文本的嵌入向量
         embedding_service = EmbeddingService()
         query_vector = embedding_service.generate_embedding(query)
         
-        # 2. Search in DB using pgvector
-        # Cosine distance: <=>
-        # L2 distance: <->
-        # Inner product: <#>
-        # We usually use cosine distance for embeddings, so we order by cosine distance
+        # 2. 使用 pgvector 在数据库中搜索
+        # 余弦距离: <=>
+        # L2 距离: <->
+        # 内积: <#>
+        # 我们通常使用余弦距离进行嵌入比较，所以按余弦距离排序
         
         stmt = db.session.query(
             Memory, 
@@ -131,7 +130,7 @@ class TaskService:
         
         results = stmt.all()
         
-        # 3. Update last_accessed_at for retrieved memories
+        # 3. 更新检索到的记忆的 last_accessed_at
         from sqlalchemy import func
         if results:
             memory_ids = [m.id for m, _ in results]
@@ -141,13 +140,13 @@ class TaskService:
             )
             db.session.commit()
         
-        # 4. Format results
+        # 4. 格式化结果
         output = []
         for memory, distance in results:
             output.append({
                 'type': memory.type.value,
                 'content': memory.content,
-                'score': 1 - distance, # Convert distance to similarity score
+                'score': 1 - distance, # 将距离转换为相似度分数
                 'created_at': memory.created_at.isoformat() if memory.created_at else None
             })
             
@@ -155,12 +154,12 @@ class TaskService:
 
     @staticmethod
     def create_background_task(message):
-        # 1. Start Celery task
-        # Re-import here to avoid circular dependency if needed, or ensure process_message exists
+        # 1. 启动 Celery 任务
+        # 在此处重新导入以避免循环依赖，或者确保 process_message 存在
         from ..tasks.background import process_message
         celery_task = process_message.delay(message)
         
-        # 2. Record in DB
+        # 2. 记录到数据库
         new_task = Task(
             task_id=celery_task.id,
             message=message,
@@ -173,32 +172,32 @@ class TaskService:
 
     @staticmethod
     def create_memory_task(user_input, user_id, llm_output):
-        # 1. Generate task ID beforehand to save to DB first
-        # Note: We need the DB ID to pass to the task, or we pass the celery task ID.
-        # Let's create the DB record first with a temporary task_id or generate UUID
+        # 1. 预先生成任务 ID 以便先保存到数据库
+        # 注意：我们需要数据库 ID 传递给任务，或者传递 celery 任务 ID。
+        # 这里先创建一个带有临时任务 ID 或生成 UUID 的数据库记录
         
         task_uuid = str(uuid.uuid4())
         
         new_task = Task(
             task_id=task_uuid,
-            message=user_input, # Storing input in message field
+            message=user_input, # 将输入存储在 message 字段中
             status='running'
         )
         db.session.add(new_task)
         db.session.commit()
         
-        # 2. Start Celery task
-        # Pass the DB primary key ID so the task can update the record
+        # 2. 启动 Celery 任务
+        # 传递数据库主键 ID，以便任务可以更新记录
         celery_task = process_memory_addition.apply_async(
             args=[new_task.id, user_input, user_id, llm_output],
-            task_id=task_uuid # Use same ID for celery
+            task_id=task_uuid # 使用相同的 ID 作为 celery ID
         )
         
         return task_uuid
         
     @staticmethod
     def get_task_status(task_id):
-        # 1. Check DB first
+        # 1. 先检查数据库
         task_record = Task.query.filter_by(task_id=task_id).first()
         
         if not task_record:

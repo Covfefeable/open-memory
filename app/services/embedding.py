@@ -11,8 +11,8 @@ class EmbeddingService:
 
     def generate_embedding(self, text):
         """
-        Generates embedding for the given text using the configured model.
-        Returns a list of floats.
+        使用配置的模型为给定的文本生成嵌入向量。
+        返回一个浮点数列表。
         """
         try:
             response = self.client.embeddings.create(
@@ -24,4 +24,4 @@ class EmbeddingService:
             
             return response.data[0].embedding
         except Exception as e:
-            raise Exception(f"Embedding generation failed: {str(e)}")
+            raise Exception(f"嵌入生成失败: {str(e)}")
