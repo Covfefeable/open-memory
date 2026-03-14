@@ -100,9 +100,8 @@ def delete_memory(request):
     data = request.get_json()
     if not data or 'id' not in data:
         return error_response(message='Missing memory id', code=400)
-        
-    memory_id = data['id']
     
+    memory_id = data['id']
     try:
         TaskService.delete_memory(memory_id)
         return success_response(message='Memory deleted successfully')
@@ -110,3 +109,21 @@ def delete_memory(request):
         return error_response(message=str(e), code=404)
     except Exception as e:
         return error_response(message=str(e), code=500)
+
+def get_memory_types():
+    from ..models.memory import MemoryType
+    
+    type_mapping = {
+        MemoryType.POSITION.value: "岗位",
+        MemoryType.WORK_CONTENT.value: "工作内容",
+        MemoryType.WRITING_PREFERENCE.value: "写作偏好",
+        MemoryType.HISTORICAL_CONTEXT.value: "历史对话核心内容"
+    }
+    
+    # Return as list of objects for frontend convenience
+    result = [
+        {"value": key, "label": value} 
+        for key, value in type_mapping.items()
+    ]
+    
+    return success_response(data=result)

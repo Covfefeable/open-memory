@@ -34,3 +34,7 @@ def update_memory():
 @api_bp.route('/memory/delete', methods=['POST'])
 def delete_memory():
     return task.delete_memory(request)
+
+@api_bp.route('/memory/types', methods=['GET'])
+def get_memory_types():
+    return task.get_memory_types()
