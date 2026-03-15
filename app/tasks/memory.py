@@ -9,11 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 @shared_task(bind=True)
-def process_memory_addition(self, task_db_id, user_input, user_id, llm_output):
+def process_memory_addition(self, task_db_id, user_input, user_id):
     """
     异步处理记忆添加任务：
     1. 更新任务状态为运行中
-    2. 调用 LLM 提取信息（综合用户输入和 LLM 输出）
+    2. 调用 LLM 提取信息（综合用户输入）
     3. 调用 Embedding 服务
     4. 保存到 Memory 表
     5. 更新任务状态为已完成
@@ -40,10 +40,10 @@ def process_memory_addition(self, task_db_id, user_input, user_id, llm_output):
         llm_service = LLMService()
         
         # 1. 提取标准记忆（position, work_content, writing_preference）
-        extraction_results = llm_service.extract_memory_info(user_input, llm_output, existing_memory_data)
+        extraction_results = llm_service.extract_memory_info(user_input, existing_memory_data)
         
         # 2. 提取历史上下文（始终提取一条，且始终锁定）
-        historical_context = llm_service.extract_historical_context(user_input, llm_output)
+        historical_context = llm_service.extract_historical_context(user_input)
         
         # 合并结果
         final_results = []

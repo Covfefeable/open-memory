@@ -10,14 +10,13 @@ class LLMService:
         )
         self.model = os.environ.get("LLM_MODEL_NAME")
 
-    def extract_memory_info(self, user_input, llm_output, existing_memories=None):
+    def extract_memory_info(self, user_input, existing_memories=None):
         """
-        利用大模型从用户输入和LLM回答中提取记忆类型和内容。
+        利用大模型从用户输入中提取记忆类型和内容。
         返回一个包含 'type' 和 'content' 的字典列表。
         
         参数:
             user_input (str): 用户的输入消息。
-            llm_output (str): LLM 的回复消息。
             existing_memories (list, optional): 已存在的记忆字典列表 ({'type': '...', 'content': '...'})，用于去重。
         """
         existing_memories_text = ""
@@ -26,7 +25,7 @@ class LLMService:
 
         system_prompt = f"""
         你是一个帮助提取公文写作场景下用户记忆的AI助手。
-        分析用户的输入和大模型的回答，并提取具有长期保存价值的记忆，严格按照以下四种类型分类：
+        分析用户的输入，并提取具有长期保存价值的记忆，严格按照以下四种类型分类：
 
         1. type: 'position'（岗位）
            - 包含：用户的具体工作岗位、单位名称、职务信息。
@@ -41,34 +40,35 @@ class LLMService:
            - 示例：喜欢使用“排比句”、偏好“严肃严谨”的文风、文章标题常采用“对仗结构”、常用“抓好落实、稳步推进”等词汇。
            - 注意：不要将临时的写作要求（如“本次要求不少于800字”、“这篇要加入最新数据”）作为长期偏好提取。
 
-        **已有记忆列表**（请检查新提取的内容是否与以下内容重复，如果完全重复则忽略，如果有更新则提取）：
+        **已有记忆列表**（此列表仅供去重参考，**绝对不要**从这里提取任何内容）：
         {existing_memories_text}
 
         **提取规则**：
-        1. content 字段需要存储核心信息，简明扼要地总结。
-        2. 如果输入仅包含临时的指令、闲聊、问候，请返回空数组 []。
-        3. 必须以JSON数组格式返回结果，每个元素包含 'type' 和 'content' 两个键。
-        4. 不要返回任何 Markdown 格式，只返回纯 JSON 数组。
-        5. **去重检查**：如果提取的信息在“已有记忆列表”中已经存在（语义高度相似），请不要再次提取；如果是新的信息或更新，则正常提取。
+        1. 仅从【用户输入】中提取信息。**严禁**将【已有记忆列表】中的内容作为新记忆提取。
+        2. content 字段需要存储核心信息，简明扼要地总结。
+        3. 如果输入仅包含临时的指令、闲聊、问候，请返回空数组 []。
+        4. 必须以JSON数组格式返回结果，每个元素包含 'type' 和 'content' 两个键。
+        5. 不要返回任何 Markdown 格式，只返回纯 JSON 数组。
+        6. **去重检查**：如果从【用户输入】提取的信息在【已有记忆列表】中已经存在（语义高度相似），请**直接忽略**，不要再次提取；只有当【用户输入】包含新的信息或对已有信息的更新时，才进行提取。
 
         示例1：
+        已有记忆列表：
+        - position: 用户所在单位是大明宫街道办
+
         输入："我是大明宫街道办的，我们最近经常处理老旧小区改造的问题，你帮我写个总结，我比较喜欢段落标题用对仗的四字词语。"
         输出：
         [
-          {{"type": "position", "content": "用户所在单位是大明宫街道办"}},
           {{"type": "work_content", "content": "用户近期经常处理老旧小区改造的问题"}},
           {{"type": "writing_preference", "content": "用户喜欢段落标题使用对仗的四字词语"}}
         ]
+        （解释：因为“单位是大明宫街道办”已存在，所以不再提取）
 
         示例2：
         输入："你好，睡了吗。"
         输出：[]
         """
         
-        user_message = f"""
-        用户输入：{user_input}
-        大模型回答：{llm_output}
-        """
+        user_message = f"用户输入：{user_input}\n"
         
         try:
             response = self.client.chat.completions.create(
@@ -107,9 +107,9 @@ class LLMService:
         except Exception as e:
             raise Exception(f"LLM 提取失败: {str(e)}")
 
-    def extract_historical_context(self, user_input, llm_output):
+    def extract_historical_context(self, user_input):
         """
-        从用户输入和 LLM 输出中提取历史上下文。
+        从用户输入中提取历史上下文。
         返回包含 'type' 和 'content' 的字典，或者 None。
         """
         system_prompt = """
@@ -126,22 +126,25 @@ class LLMService:
         4. 必须以JSON格式返回结果，包含 'type' 和 'content' 两个键。type 固定为 'historical_context'。
         5. 不要返回任何 Markdown 格式，只返回纯 JSON 对象。
 
-        **示例**：
+        **示例1**：
         输入：
-        用户输入：询问本单位2025年度党建工作考核相关事宜，具体包括考核指标细则、材料报送时间、考核流程及加分项要求...
-        大模型回答：...（相关回答）...
+        用户输入：询问本单位2025年度党建工作考核相关事宜...
 
         输出：
         {
           "type": "historical_context",
-          "content": "用户询问2025年度党建工作考核事宜。核心内容包括：《2025年度基层党建工作考核实施方案》涵盖6大板块28项指标；考核分自查、交叉、集中三阶段；首次将“党建与业务融合成效”纳入核心指标（占比30%）；材料报送截止12月20日；加分项最高10分。核心工作是各支部自查及牵头科室组织检查。"
+          "content": "用户询问2025年度党建工作考核事宜。核心内容包括：《2025年度基层党建工作考核实施方案》涵盖6大板块28项指标..."
         }
+
+        **示例2**：
+        输入：
+        用户输入：这就去办
+
+        输出：
+        null
         """
         
-        user_message = f"""
-        用户输入：{user_input}
-        大模型回答：{llm_output}
-        """
+        user_message = f"用户输入：{user_input}\n"
         
         try:
             response = self.client.chat.completions.create(

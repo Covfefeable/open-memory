@@ -19,10 +19,10 @@ def add_memory(request):
     from ..services.task import TaskService
     
     data = request.get_json()
-    if not data or 'user_input' not in data or 'user_id' not in data or 'llm_output' not in data:
-        return error_response(message='缺少必要参数：user_input, user_id 或 llm_output', code=400)
-        
-    task_id = TaskService.create_memory_task(data['user_input'], data['user_id'], data['llm_output'])
+    if not data or 'user_input' not in data or 'user_id' not in data:
+        return error_response(message='缺少必要参数：user_input 或 user_id', code=400)
+    
+    task_id = TaskService.create_memory_task(data['user_input'], data['user_id'])
     return success_response(data={'task_id': task_id, 'status': 'running'}, code=202)
 
 def search_memory(request):
@@ -34,9 +34,20 @@ def search_memory(request):
         
     user_id = data['user_id']
     query = data['query']
-    top_k = data.get('top_k', 5)
     
-    results = TaskService.search_memories(user_id, query, top_k)
+    basic_topk = data.get('basic_topk', 5)
+    history_topk = data.get('history_topk', 5)
+    basic_score = data.get('basic_score')
+    history_score = data.get('history_score')
+    
+    results = TaskService.search_memories(
+        user_id, 
+        query, 
+        basic_topk=basic_topk, 
+        history_topk=history_topk,
+        basic_score=basic_score,
+        history_score=history_score
+    )
     return success_response(data=results)
 
 def list_memory(request):
@@ -98,12 +109,15 @@ def delete_memory(request):
     from ..services.task import TaskService
     
     data = request.get_json()
-    if not data or 'id' not in data:
-        return error_response(message='缺少记忆 ID', code=400)
+    if not data or 'ids' not in data:
+        return error_response(message='缺少记忆 ID 列表 (ids)', code=400)
     
-    memory_id = data['id']
+    memory_ids = data['ids']
+    if not isinstance(memory_ids, list):
+        return error_response(message='ids 必须是数组', code=400)
+        
     try:
-        TaskService.delete_memory(memory_id)
+        TaskService.delete_memories(memory_ids)
         return success_response(message='记忆删除成功')
     except ValueError as e:
         return error_response(message=str(e), code=404)
