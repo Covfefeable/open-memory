@@ -55,9 +55,9 @@ class LLMService:
         输入："我是大明宫街道办的，我们最近经常处理老旧小区改造的问题，你帮我写个总结，我比较喜欢段落标题用对仗的四字词语。"
         输出：
         [
-          {"type": "position", "content": "用户所在单位是大明宫街道办"},
-          {"type": "work_content", "content": "用户近期经常处理老旧小区改造的问题"},
-          {"type": "writing_preference", "content": "用户喜欢段落标题使用对仗的四字词语"}
+          {{"type": "position", "content": "用户所在单位是大明宫街道办"}},
+          {{"type": "work_content", "content": "用户近期经常处理老旧小区改造的问题"}},
+          {{"type": "writing_preference", "content": "用户喜欢段落标题使用对仗的四字词语"}}
         ]
 
         示例2：
