@@ -9,6 +9,7 @@ class Config:
     CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND') or 'redis://localhost:6379/0'
     EMBEDDING_DIMENSION = int(os.environ.get('EMBEDDING_DIMENSION') or 1024)
     API_AUTH_TOKEN = os.environ.get('API_AUTH_TOKEN')
+    SIMILARITY_THRESHOLD = float(os.environ.get('SIMILARITY_THRESHOLD') or 0.8)
 
 
 

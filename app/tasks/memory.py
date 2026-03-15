@@ -8,6 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from ..config import Config
+
 @shared_task(bind=True)
 def process_memory_addition(self, task_db_id, user_input, user_id):
     """
@@ -15,8 +17,9 @@ def process_memory_addition(self, task_db_id, user_input, user_id):
     1. 更新任务状态为运行中
     2. 调用 LLM 提取信息（综合用户输入）
     3. 调用 Embedding 服务
-    4. 保存到 Memory 表
-    5. 更新任务状态为已完成
+    4. 检查相似度，如果过高则丢弃
+    5. 保存到 Memory 表
+    6. 更新任务状态为已完成
     """
     try:
         # 1. 更新任务状态为运行中
@@ -62,6 +65,7 @@ def process_memory_addition(self, task_db_id, user_input, user_id):
 
         memory_ids = []
         embedding_service = EmbeddingService()
+        similarity_threshold = Config.SIMILARITY_THRESHOLD
 
         for item in final_results:
             memory_type_str = item.get('type', 'fact').upper()
@@ -80,7 +84,23 @@ def process_memory_addition(self, task_db_id, user_input, user_id):
             # 3. 调用 Embedding 服务
             vector = embedding_service.generate_embedding(memory_content)
             
-            # 4. 保存到 Memory 表
+            # 4. 相似度检查
+            # 查找当前用户所有记忆中相似度最高的
+            # 使用 cosine_distance，值越小越相似。 score = 1 - distance。
+            # distance < 1 - threshold 即为相似度 > threshold
+            # threshold_distance = 1.0 - similarity_threshold
+            threshold_distance = 1.0 - similarity_threshold
+            
+            similar_memory = db.session.query(Memory).filter(
+                Memory.user_id == user_id,
+                Memory.embedding.cosine_distance(vector) < threshold_distance
+            ).first()
+            
+            if similar_memory:
+                logger.info(f"记忆内容 '{memory_content[:20]}...' 与现有记忆相似度过高，已丢弃。")
+                continue
+
+            # 5. 保存到 Memory 表
             new_memory = Memory(
                 user_id=user_id,
                 type=memory_type,
@@ -93,9 +113,13 @@ def process_memory_addition(self, task_db_id, user_input, user_id):
             db.session.flush() 
             memory_ids.append(str(new_memory.id))
         
-        # 5. 更新任务状态为已完成
+        # 6. 更新任务状态为已完成
         task_record.status = 'completed'
-        task_record.result = f"记忆添加成功。ID列表: {', '.join(memory_ids)}"
+        if memory_ids:
+            task_record.result = f"记忆添加成功。ID列表: {', '.join(memory_ids)}"
+        else:
+            task_record.result = "提取的记忆因与现有记忆相似度过高而被全部丢弃。"
+            
         db.session.commit()
         
         return {"status": "completed", "memory_ids": memory_ids}
