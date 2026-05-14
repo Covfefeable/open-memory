@@ -16,9 +16,9 @@ def celery_init_app(app):
     
     # Configure periodic tasks
     celery_app.conf.beat_schedule = {
-        'compress-memories-every-5-minutes': {
+        'compress-memories-every-30-minutes': {
             'task': 'app.tasks.background.compress_user_memories',
-            'schedule': 300.0, # 5 minutes
+            'schedule': 1800.0, # 30 minutes
         },
     }
     

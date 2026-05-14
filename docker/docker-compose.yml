@@ -5,7 +5,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: open-memory-api
     command: >
-      uv run gunicorn
+      uv run --no-sync gunicorn
       --bind "0.0.0.0:${API_PORT}"
       --workers ${SERVER_WORKER_AMOUNT:-1}
       --worker-class ${SERVER_WORKER_CLASS:-gevent}
@@ -42,7 +42,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: open-memory-worker-beat
-    command: uv run celery -A app.celery beat --loglevel=info
+    command: uv run --no-sync celery -A app.celery beat --loglevel=info
     environment:
       - FLASK_APP=app
       - DATABASE_URL=postgresql+psycopg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}
@@ -68,7 +68,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: open-memory-worker
-    command: uv run celery -A app.celery worker --loglevel=info
+    command: uv run --no-sync celery -A app.celery worker --loglevel=info
     environment:
       - FLASK_APP=app
       - DATABASE_URL=postgresql+psycopg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}
